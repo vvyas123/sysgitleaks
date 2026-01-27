@@ -90,8 +90,7 @@ tags = ["crypto", "seed-phrase", "mnemonic"]
 
 [[rules]]
 id = "aws-secret-access-key"
-description = "AWS Secret Access Key"
-regex = '''(?i)aws.{0,50}secret_access_key.{0,50}[:=][ \t]*([A-Za-z0-9/+=]{40})'''
-entropy = 4.5
-keywords = ["aws", "secret", "access", "key"]
+description = "AWS Secret Access Key (value only)"
+regex = '''[A-Za-z0-9/+=]{40}'''
+entropy = 3.5
 tags = ["aws", "secret"]
