@@ -39,19 +39,6 @@ function has_gitleaks {
   grep -q "gitleaks" "$file" 2>/dev/null
 }
 
-# Function to add .husky/pre-commit to .gitignore
-function add_to_gitignore {
-  if [ -f ".gitignore" ]; then
-    if ! grep -q "^\.husky/pre-commit$" .gitignore 2>/dev/null; then
-      echo ".husky/pre-commit" >> .gitignore
-      echo -e "  ${SUCCESS}✓${NORMAL} Added .husky/pre-commit to .gitignore"
-    fi
-  else
-    echo ".husky/pre-commit" > .gitignore
-    echo -e "  ${SUCCESS}✓${NORMAL} Created .gitignore with .husky/pre-commit"
-  fi
-}
-
 # Function to safely inject gitleaks into Husky pre-commit hook
 function inject_gitleaks_husky {
   local hook_file="$1"
@@ -59,15 +46,8 @@ function inject_gitleaks_husky {
   # Check if gitleaks is already present
   if has_gitleaks "$hook_file"; then
     echo -e "  ${SUCCESS}✓${NORMAL} Gitleaks already configured in Husky pre-commit"
-    add_to_gitignore
     return 0
   fi
-  
-  # Backup the original file
-  cp "$hook_file" "${hook_file}.backup.$(date +%s)" 2>/dev/null || {
-    echo -e "  ${ERROR}✗${NORMAL} Failed to backup $hook_file"
-    return 1
-  }
   
   # Create temporary file with injected gitleaks
   local temp_file=$(mktemp)
@@ -81,14 +61,17 @@ function inject_gitleaks_husky {
     if [[ ! "$injected" == true ]] && [[ "$line" =~ \.\s+.*husky\.sh ]] || [[ "$line" =~ source.*husky\.sh ]]; then
       cat >> "$temp_file" << 'GITLEAKS_INJECT'
 
-# Gitleaks secret scanning (auto-injected by sysgitleaks)
+# Gitleaks secret scanning (auto-injected by gitleaks)
+# Add common gitleaks installation paths to PATH for Husky non-login shell
+export PATH="/usr/local/bin:/opt/homebrew/bin:$PATH"
+
 if command -v gitleaks &> /dev/null; then
   echo "🔍 Scanning for secrets with gitleaks..."
   GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
   if [ -f "$GITLEAKS_CONFIG" ]; then
-    gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+    gitleaks protect --staged --redact --verbose --config="$GITLEAKS_CONFIG" || exit 1
   else
-    gitleaks protect --staged --redact || exit 1
+    gitleaks protect --staged --redact --verbose || exit 1
   fi
   echo "✓ No secrets detected"
 else
@@ -108,9 +91,9 @@ if command -v gitleaks &> /dev/null; then
   echo "🔍 Scanning for secrets with gitleaks..."
   GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
   if [ -f "$GITLEAKS_CONFIG" ]; then
-    gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+    gitleaks protect --staged --redact --verbose --config="$GITLEAKS_CONFIG" || exit 1
   else
-    gitleaks protect --staged --redact || exit 1
+    gitleaks protect --staged --redact --verbose || exit 1
   fi
   echo "✓ No secrets detected"
 else
@@ -132,7 +115,6 @@ GITLEAKS_INJECT
   }
   
   echo -e "  ${SUCCESS}✓${NORMAL} Injected gitleaks into Husky pre-commit hook"
-  add_to_gitignore
   return 0
 }
 
@@ -151,9 +133,9 @@ if command -v gitleaks &> /dev/null; then
   echo "🔍 Scanning for secrets with gitleaks..."
   GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
   if [ -f "$GITLEAKS_CONFIG" ]; then
-    gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+    gitleaks protect --staged --redact --verbose --config="$GITLEAKS_CONFIG" || exit 1
   else
-    gitleaks protect --staged --redact || exit 1
+    gitleaks protect --staged --redact --verbose || exit 1
   fi
   echo "✓ No secrets detected"
 else
@@ -166,7 +148,6 @@ HUSKY_HOOK
   }
   
   echo -e "  ${SUCCESS}✓${NORMAL} Created Husky pre-commit hook with gitleaks"
-  add_to_gitignore
   return 0
 }
 

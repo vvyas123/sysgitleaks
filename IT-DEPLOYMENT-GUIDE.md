@@ -16,7 +16,7 @@ chmod +x install-gitleaks-global.sh && ./install-gitleaks-global.sh
 ```bash
 chmod +x update-all-repos.sh && ./update-all-repos.sh ~
 ```
-*Installs hooks in all repos. Detects Husky automatically. Adds `.husky/pre-commit` to `.gitignore`.*
+*Installs hooks in all repos. Detects Husky automatically.*
 
 ### 3. Verify Installation
 ```bash

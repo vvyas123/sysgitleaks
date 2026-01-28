@@ -56,8 +56,8 @@ chmod +x update-all-repos.sh && ./update-all-repos.sh ~
 **Features:**
 - ✅ Automatic detection of Husky vs native Git hooks
 - ✅ Safe injection into existing Husky pre-commit hooks
-- ✅ Adds `.husky/pre-commit` to `.gitignore` (no commit required)
 - ✅ Works with all Git repositories
+- ✅ Adds PATH for Husky non-login shell compatibility
 
 See `IT-DEPLOYMENT-GUIDE.md` for complete installation instructions.
 
