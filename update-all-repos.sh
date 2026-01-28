@@ -244,6 +244,17 @@ function update_repo {
   if [ -d ".git" ]; then
     printf "%b\n" "${HIGHLIGHT}Installing gitleaks hooks in $(pwd)${NORMAL}"
     
+    # CRITICAL: Check if core.hooksPath is configured but directory doesn't exist
+    HOOKS_PATH=$(git config core.hooksPath 2>/dev/null || echo "")
+    if [ -n "$HOOKS_PATH" ] && [ ! -d "$HOOKS_PATH" ]; then
+      echo -e "  ${ERROR}🚨 CRITICAL${NORMAL}: Git is configured to use hooks from '$HOOKS_PATH' but directory doesn't exist!"
+      echo -e "  ${WARNING}⚠${NORMAL}  This means NO hooks are running - security bypass!"
+      echo -e "  ${HIGHLIGHT}→${NORMAL} Fixing: Unsetting core.hooksPath and installing native hooks"
+      git config --unset core.hooksPath
+      install_native_hooks
+      return 0
+    fi
+    
     # Detect if this repo uses Husky
     if [ -d ".husky" ]; then
       echo -e "  ${HIGHLIGHT}→${NORMAL} Detected Husky repository"
@@ -262,6 +273,13 @@ function update_repo {
         fi
       fi
     else
+      # Check if core.hooksPath points to .husky but .husky doesn't exist
+      if [ "$HOOKS_PATH" = ".husky/_" ] || [ "$HOOKS_PATH" = ".husky" ]; then
+        echo -e "  ${WARNING}⚠${NORMAL}  Repo was using Husky but .husky/ is missing"
+        echo -e "  ${HIGHLIGHT}→${NORMAL} Unsetting core.hooksPath and using native hooks"
+        git config --unset core.hooksPath
+      fi
+      
       # Standard git hooks installation
       echo -e "  ${HIGHLIGHT}→${NORMAL} Using native Git hooks"
       install_native_hooks
