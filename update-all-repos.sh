@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Script to install gitleaks pre-commit hooks in existing repositories
+# Supports both Husky-managed repos and native Git hooks
 # Based on git-secrets update-all-repos.sh
 
 # Usage examples:
@@ -11,6 +12,7 @@
 HIGHLIGHT="\e[01;34m"
 SUCCESS="\e[01;32m"
 ERROR="\e[01;31m"
+WARNING="\e[01;33m"
 NORMAL='\e[00m'
 
 # Check if gitleaks is installed
@@ -31,6 +33,203 @@ if [ ! -d "$TEMPLATE_DIR/hooks" ]; then
     exit 1
 fi
 
+# Function to check if gitleaks is already in a file
+function has_gitleaks {
+  local file="$1"
+  grep -q "gitleaks" "$file" 2>/dev/null
+}
+
+# Function to safely inject gitleaks into Husky pre-commit hook
+function inject_gitleaks_husky {
+  local hook_file="$1"
+  
+  # Check if gitleaks is already present
+  if has_gitleaks "$hook_file"; then
+    echo -e "  ${SUCCESS}✓${NORMAL} Gitleaks already configured in Husky pre-commit"
+    return 0
+  fi
+  
+  # Backup the original file
+  cp "$hook_file" "${hook_file}.backup.$(date +%s)" 2>/dev/null || {
+    echo -e "  ${ERROR}✗${NORMAL} Failed to backup $hook_file"
+    return 1
+  }
+  
+  # Create temporary file with injected gitleaks
+  local temp_file=$(mktemp)
+  
+  # Read the file and inject gitleaks after the husky.sh line
+  local injected=false
+  while IFS= read -r line; do
+    echo "$line" >> "$temp_file"
+    
+    # Inject after the husky.sh sourcing line
+    if [[ ! "$injected" == true ]] && [[ "$line" =~ \.\s+.*husky\.sh ]] || [[ "$line" =~ source.*husky\.sh ]]; then
+      cat >> "$temp_file" << 'GITLEAKS_INJECT'
+
+# Gitleaks secret scanning (auto-injected by sysgitleaks)
+if command -v gitleaks &> /dev/null; then
+  echo "🔍 Scanning for secrets with gitleaks..."
+  GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
+  if [ -f "$GITLEAKS_CONFIG" ]; then
+    gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+  else
+    gitleaks detect --staged --redact || exit 1
+  fi
+  echo "✓ No secrets detected"
+else
+  echo "⚠ Warning: gitleaks not found, skipping secret scan"
+fi
+GITLEAKS_INJECT
+      injected=true
+    fi
+  done < "$hook_file"
+  
+  # If we didn't find the husky.sh line, append at the end
+  if [ "$injected" != true ]; then
+    cat >> "$temp_file" << 'GITLEAKS_INJECT'
+
+# Gitleaks secret scanning (auto-injected by sysgitleaks)
+if command -v gitleaks &> /dev/null; then
+  echo "🔍 Scanning for secrets with gitleaks..."
+  GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
+  if [ -f "$GITLEAKS_CONFIG" ]; then
+    gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+  else
+    gitleaks detect --staged --redact || exit 1
+  fi
+  echo "✓ No secrets detected"
+else
+  echo "⚠ Warning: gitleaks not found, skipping secret scan"
+fi
+GITLEAKS_INJECT
+  fi
+  
+  # Replace original file with modified version
+  mv "$temp_file" "$hook_file" 2>/dev/null || {
+    echo -e "  ${ERROR}✗${NORMAL} Failed to update $hook_file"
+    rm -f "$temp_file"
+    return 1
+  }
+  
+  # Ensure it's executable
+  chmod +x "$hook_file" 2>/dev/null || {
+    echo -e "  ${WARNING}⚠${NORMAL}  Warning: Could not make hook executable"
+  }
+  
+  echo -e "  ${SUCCESS}✓${NORMAL} Injected gitleaks into Husky pre-commit hook"
+  return 0
+}
+
+# Function to create Husky pre-commit hook if it doesn't exist
+function create_husky_precommit {
+  local hook_file="$1"
+  
+  mkdir -p "$(dirname "$hook_file")" 2>/dev/null || {
+    echo -e "  ${ERROR}✗${NORMAL} Failed to create .husky directory"
+    return 1
+  }
+  
+  cat > "$hook_file" << 'HUSKY_HOOK'
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Gitleaks secret scanning (auto-injected by sysgitleaks)
+if command -v gitleaks &> /dev/null; then
+  echo "🔍 Scanning for secrets with gitleaks..."
+  GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
+  if [ -f "$GITLEAKS_CONFIG" ]; then
+    gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+  else
+    gitleaks detect --staged --redact || exit 1
+  fi
+  echo "✓ No secrets detected"
+else
+  echo "⚠ Warning: gitleaks not found, skipping secret scan"
+fi
+HUSKY_HOOK
+  
+  chmod +x "$hook_file" 2>/dev/null || {
+    echo -e "  ${WARNING}⚠${NORMAL}  Warning: Could not make hook executable"
+  }
+  
+  echo -e "  ${SUCCESS}✓${NORMAL} Created Husky pre-commit hook with gitleaks"
+  return 0
+}
+
+# Function to install native Git hooks
+function install_native_hooks {
+  mkdir -p .git/hooks 2>/dev/null || {
+    echo -e "  ${ERROR}✗${NORMAL} Failed to create hooks directory"
+    return 1
+  }
+  
+  local success=true
+  
+  # Check if pre-commit already exists and has gitleaks
+  if [ -f .git/hooks/pre-commit ]; then
+    if has_gitleaks .git/hooks/pre-commit; then
+      echo -e "  ${SUCCESS}✓${NORMAL} Native pre-commit hook already has gitleaks"
+    else
+      # Backup existing hook
+      cp .git/hooks/pre-commit .git/hooks/pre-commit.backup.$(date +%s) 2>/dev/null
+      echo -e "  ${WARNING}⚠${NORMAL}  Existing pre-commit hook backed up"
+      
+      # Install new hook (overwriting)
+      if [ -f "$TEMPLATE_DIR/hooks/pre-commit" ]; then
+        cp "$TEMPLATE_DIR/hooks/pre-commit" .git/hooks/pre-commit 2>/dev/null && \
+        chmod +x .git/hooks/pre-commit 2>/dev/null && \
+        echo -e "  ${SUCCESS}✓${NORMAL} Installed pre-commit hook"
+      else
+        success=false
+      fi
+    fi
+  else
+    # No existing hook, just install
+    if [ -f "$TEMPLATE_DIR/hooks/pre-commit" ]; then
+      cp "$TEMPLATE_DIR/hooks/pre-commit" .git/hooks/pre-commit 2>/dev/null && \
+      chmod +x .git/hooks/pre-commit 2>/dev/null && \
+      echo -e "  ${SUCCESS}✓${NORMAL} Installed pre-commit hook"
+    else
+      success=false
+    fi
+  fi
+  
+  # Install commit-msg hook
+  if [ -f .git/hooks/commit-msg ]; then
+    if has_gitleaks .git/hooks/commit-msg; then
+      echo -e "  ${SUCCESS}✓${NORMAL} Native commit-msg hook already has gitleaks"
+    else
+      cp .git/hooks/commit-msg .git/hooks/commit-msg.backup.$(date +%s) 2>/dev/null
+      if [ -f "$TEMPLATE_DIR/hooks/commit-msg" ]; then
+        cp "$TEMPLATE_DIR/hooks/commit-msg" .git/hooks/commit-msg 2>/dev/null && \
+        chmod +x .git/hooks/commit-msg 2>/dev/null && \
+        echo -e "  ${SUCCESS}✓${NORMAL} Installed commit-msg hook"
+      fi
+    fi
+  else
+    if [ -f "$TEMPLATE_DIR/hooks/commit-msg" ]; then
+      cp "$TEMPLATE_DIR/hooks/commit-msg" .git/hooks/commit-msg 2>/dev/null && \
+      chmod +x .git/hooks/commit-msg 2>/dev/null && \
+      echo -e "  ${SUCCESS}✓${NORMAL} Installed commit-msg hook"
+    fi
+  fi
+  
+  # Test the installation
+  if [ -x .git/hooks/pre-commit ]; then
+    echo -e "  ${SUCCESS}✓${NORMAL} Hooks are executable and ready"
+  else
+    echo -e "  ${ERROR}✗${NORMAL} Warning: Hooks may not be executable"
+    success=false
+  fi
+  
+  if [ "$success" != true ]; then
+    return 1
+  fi
+  
+  return 0
+}
+
 function update_repo {
   local d="$1"
   
@@ -45,40 +244,27 @@ function update_repo {
   if [ -d ".git" ]; then
     printf "%b\n" "${HIGHLIGHT}Installing gitleaks hooks in $(pwd)${NORMAL}"
     
-    # Check if this repo uses Husky
-    if [ -d ".husky" ] || [ -f "package.json" ] && grep -q "husky" package.json 2>/dev/null; then
-      echo -e "  ${HIGHLIGHT}⚠${NORMAL}  Detected Husky - skipping (Husky manages its own hooks)"
-      echo -e "  ${HIGHLIGHT}→${NORMAL} For Husky repos, use server-side protection:"
-      echo -e "     • GitHub Actions: https://github.com/gitleaks/gitleaks-action"
-      echo -e "     • GitLab CI: Add gitleaks to .gitlab-ci.yml"
-      echo -e "     • Or manually add gitleaks to .husky/pre-commit (not recommended)"
+    # Detect if this repo uses Husky
+    if [ -d ".husky" ]; then
+      echo -e "  ${HIGHLIGHT}→${NORMAL} Detected Husky repository"
+      
+      # Check if pre-commit exists
+      if [ -f ".husky/pre-commit" ]; then
+        inject_gitleaks_husky ".husky/pre-commit"
+      else
+        # Check if husky.sh exists to confirm it's a valid Husky setup
+        if [ -f ".husky/_/husky.sh" ] || [ -f ".husky/husky.sh" ]; then
+          create_husky_precommit ".husky/pre-commit"
+        else
+          echo -e "  ${WARNING}⚠${NORMAL}  Husky directory exists but appears incomplete"
+          echo -e "  ${HIGHLIGHT}→${NORMAL} Installing native Git hooks as fallback"
+          install_native_hooks
+        fi
+      fi
     else
       # Standard git hooks installation
-      mkdir -p .git/hooks 2>/dev/null || {
-        echo -e "  ${ERROR}✗${NORMAL} Failed to create hooks directory"
-        cd .. > /dev/null 2>&1
-        return 1
-      }
-      
-      # Copy hooks from template
-      if [ -f "$TEMPLATE_DIR/hooks/pre-commit" ]; then
-        cp "$TEMPLATE_DIR/hooks/pre-commit" .git/hooks/pre-commit 2>/dev/null && \
-        chmod +x .git/hooks/pre-commit 2>/dev/null && \
-        echo -e "  ${SUCCESS}✓${NORMAL} Installed pre-commit hook"
-      fi
-      
-      if [ -f "$TEMPLATE_DIR/hooks/commit-msg" ]; then
-        cp "$TEMPLATE_DIR/hooks/commit-msg" .git/hooks/commit-msg 2>/dev/null && \
-        chmod +x .git/hooks/commit-msg 2>/dev/null && \
-        echo -e "  ${SUCCESS}✓${NORMAL} Installed commit-msg hook"
-      fi
-      
-      # Test the installation
-      if [ -x .git/hooks/pre-commit ]; then
-        echo -e "  ${SUCCESS}✓${NORMAL} Hooks are executable and ready"
-      else
-        echo -e "  ${ERROR}✗${NORMAL} Warning: Hooks may not be executable"
-      fi
+      echo -e "  ${HIGHLIGHT}→${NORMAL} Using native Git hooks"
+      install_native_hooks
     fi
   else
     # Not a git repo, scan subdirectories (but with protection)
@@ -128,6 +314,7 @@ echo -e "${SUCCESS}========================================${NORMAL}\n"
 
 echo -e "${HIGHLIGHT}Summary:${NORMAL}"
 echo "  • Gitleaks pre-commit hooks have been installed in all git repositories"
+echo "  • Both Husky and native Git hooks are supported"
 echo "  • Future commits will be scanned for blockchain private keys and secrets"
 echo ""
 echo -e "${HIGHLIGHT}Test the hooks:${NORMAL}"
