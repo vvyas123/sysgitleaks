@@ -92,5 +92,5 @@ tags = ["crypto", "seed-phrase", "mnemonic"]
 id = "aws-secret-access-key"
 description = "AWS Secret Access Key (value only)"
 regex = '''[A-Za-z0-9/+=]{40}'''
-entropy = 3.5
+entropy = 4.0
 tags = ["aws", "secret"]
