@@ -39,6 +39,19 @@ function has_gitleaks {
   grep -q "gitleaks" "$file" 2>/dev/null
 }
 
+# Function to add .husky/pre-commit to .gitignore
+function add_to_gitignore {
+  if [ -f ".gitignore" ]; then
+    if ! grep -q "^\.husky/pre-commit$" .gitignore 2>/dev/null; then
+      echo ".husky/pre-commit" >> .gitignore
+      echo -e "  ${SUCCESS}✓${NORMAL} Added .husky/pre-commit to .gitignore"
+    fi
+  else
+    echo ".husky/pre-commit" > .gitignore
+    echo -e "  ${SUCCESS}✓${NORMAL} Created .gitignore with .husky/pre-commit"
+  fi
+}
+
 # Function to safely inject gitleaks into Husky pre-commit hook
 function inject_gitleaks_husky {
   local hook_file="$1"
@@ -46,6 +59,7 @@ function inject_gitleaks_husky {
   # Check if gitleaks is already present
   if has_gitleaks "$hook_file"; then
     echo -e "  ${SUCCESS}✓${NORMAL} Gitleaks already configured in Husky pre-commit"
+    add_to_gitignore
     return 0
   fi
   
@@ -118,18 +132,7 @@ GITLEAKS_INJECT
   }
   
   echo -e "  ${SUCCESS}✓${NORMAL} Injected gitleaks into Husky pre-commit hook"
-  
-  # Add to .gitignore if not already there
-  if [ -f ".gitignore" ]; then
-    if ! grep -q "^\.husky/pre-commit$" .gitignore 2>/dev/null; then
-      echo ".husky/pre-commit" >> .gitignore
-      echo -e "  ${SUCCESS}✓${NORMAL} Added .husky/pre-commit to .gitignore"
-    fi
-  else
-    echo ".husky/pre-commit" > .gitignore
-    echo -e "  ${SUCCESS}✓${NORMAL} Created .gitignore with .husky/pre-commit"
-  fi
-  
+  add_to_gitignore
   return 0
 }
 
@@ -163,18 +166,7 @@ HUSKY_HOOK
   }
   
   echo -e "  ${SUCCESS}✓${NORMAL} Created Husky pre-commit hook with gitleaks"
-  
-  # Add to .gitignore if not already there
-  if [ -f ".gitignore" ]; then
-    if ! grep -q "^\.husky/pre-commit$" .gitignore 2>/dev/null; then
-      echo ".husky/pre-commit" >> .gitignore
-      echo -e "  ${SUCCESS}✓${NORMAL} Added .husky/pre-commit to .gitignore"
-    fi
-  else
-    echo ".husky/pre-commit" > .gitignore
-    echo -e "  ${SUCCESS}✓${NORMAL} Created .gitignore with .husky/pre-commit"
-  fi
-  
+  add_to_gitignore
   return 0
 }
 
