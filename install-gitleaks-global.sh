@@ -133,9 +133,9 @@ run_gitleaks_scan() {
     echo -e "${YELLOW}🔍 Scanning for secrets with gitleaks...${NC}"
 
     if [ -n "$GITLEAKS_CONFIG" ]; then
-        gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" --verbose
+        gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" --verbose
     else
-        gitleaks detect --staged --redact --verbose
+        gitleaks protect --staged --redact --verbose
     fi
 
     if [ $? -eq 0 ]; then
@@ -195,9 +195,9 @@ fi
 
 # Silent check on commit
 if [ -n "$GITLEAKS_CONFIG" ]; then
-    gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" > /dev/null 2>&1
+    gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" > /dev/null 2>&1
 else
-    gitleaks detect --staged --redact > /dev/null 2>&1
+    gitleaks protect --staged --redact > /dev/null 2>&1
 fi
 
 if [ $? -ne 0 ]; then

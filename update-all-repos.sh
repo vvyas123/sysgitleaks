@@ -72,9 +72,9 @@ if command -v gitleaks &> /dev/null; then
   echo "🔍 Scanning for secrets with gitleaks..."
   GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
   if [ -f "$GITLEAKS_CONFIG" ]; then
-    gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+    gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
   else
-    gitleaks detect --staged --redact || exit 1
+    gitleaks protect --staged --redact || exit 1
   fi
   echo "✓ No secrets detected"
 else
@@ -94,9 +94,9 @@ if command -v gitleaks &> /dev/null; then
   echo "🔍 Scanning for secrets with gitleaks..."
   GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
   if [ -f "$GITLEAKS_CONFIG" ]; then
-    gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+    gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
   else
-    gitleaks detect --staged --redact || exit 1
+    gitleaks protect --staged --redact || exit 1
   fi
   echo "✓ No secrets detected"
 else
@@ -139,9 +139,9 @@ if command -v gitleaks &> /dev/null; then
   echo "🔍 Scanning for secrets with gitleaks..."
   GITLEAKS_CONFIG="$HOME/.config/gitleaks/gitleaks.toml"
   if [ -f "$GITLEAKS_CONFIG" ]; then
-    gitleaks detect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
+    gitleaks protect --staged --redact --config="$GITLEAKS_CONFIG" || exit 1
   else
-    gitleaks detect --staged --redact || exit 1
+    gitleaks protect --staged --redact || exit 1
   fi
   echo "✓ No secrets detected"
 else
