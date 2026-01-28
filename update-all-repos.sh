@@ -118,6 +118,18 @@ GITLEAKS_INJECT
   }
   
   echo -e "  ${SUCCESS}✓${NORMAL} Injected gitleaks into Husky pre-commit hook"
+  
+  # Add to .gitignore if not already there
+  if [ -f ".gitignore" ]; then
+    if ! grep -q "^\.husky/pre-commit$" .gitignore 2>/dev/null; then
+      echo ".husky/pre-commit" >> .gitignore
+      echo -e "  ${SUCCESS}✓${NORMAL} Added .husky/pre-commit to .gitignore"
+    fi
+  else
+    echo ".husky/pre-commit" > .gitignore
+    echo -e "  ${SUCCESS}✓${NORMAL} Created .gitignore with .husky/pre-commit"
+  fi
+  
   return 0
 }
 
@@ -131,9 +143,6 @@ function create_husky_precommit {
   }
   
   cat > "$hook_file" << 'HUSKY_HOOK'
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Gitleaks secret scanning (auto-injected by sysgitleaks)
 if command -v gitleaks &> /dev/null; then
   echo "🔍 Scanning for secrets with gitleaks..."
@@ -154,6 +163,18 @@ HUSKY_HOOK
   }
   
   echo -e "  ${SUCCESS}✓${NORMAL} Created Husky pre-commit hook with gitleaks"
+  
+  # Add to .gitignore if not already there
+  if [ -f ".gitignore" ]; then
+    if ! grep -q "^\.husky/pre-commit$" .gitignore 2>/dev/null; then
+      echo ".husky/pre-commit" >> .gitignore
+      echo -e "  ${SUCCESS}✓${NORMAL} Added .husky/pre-commit to .gitignore"
+    fi
+  else
+    echo ".husky/pre-commit" > .gitignore
+    echo -e "  ${SUCCESS}✓${NORMAL} Created .gitignore with .husky/pre-commit"
+  fi
+  
   return 0
 }
 

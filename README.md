@@ -34,6 +34,35 @@
 
 Gitleaks is a tool for **detecting** secrets like passwords, API keys, and tokens in git repos, files, and whatever else you wanna throw at it via `stdin`. If you wanna learn more about how the detection engine works check out this blog: [Regex is (almost) all you need](https://lookingatcomputer.substack.com/p/regex-is-almost-all-you-need).
 
+---
+
+## 🔒 Custom Blockchain Security Rules
+
+This fork includes **enhanced detection rules** specifically designed for blockchain and cryptocurrency projects:
+- Private keys (Ethereum, Bitcoin, Solana, and other chains)
+
+### 📦 Automated Installation Scripts
+
+Quick deployment for teams and organizations:
+
+```bash
+# 1. Install gitleaks globally with pre-commit hooks
+chmod +x install-gitleaks-global.sh && ./install-gitleaks-global.sh
+
+# 2. Update all existing repositories (detects Husky automatically)
+chmod +x update-all-repos.sh && ./update-all-repos.sh ~
+```
+
+**Features:**
+- ✅ Automatic detection of Husky vs native Git hooks
+- ✅ Safe injection into existing Husky pre-commit hooks
+- ✅ Adds `.husky/pre-commit` to `.gitignore` (no commit required)
+- ✅ Works with all Git repositories
+
+See `IT-DEPLOYMENT-GUIDE.md` for complete installation instructions.
+
+---
+
 ```
 ➜  ~/code(master) gitleaks git -v
 
