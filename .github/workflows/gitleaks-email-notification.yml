@@ -55,7 +55,7 @@ jobs:
             **PR:** #${context.issue.number}
             **Commit:** ${context.sha}
 
-             Please remove the secret immediately and rotate any exposed credentials.
+            Please remove the secret immediately and rotate any exposed credentials.
             `
             });
 
@@ -78,7 +78,7 @@ jobs:
             **Commit:** ${context.sha}
             **Triggered by:** ${context.actor}
 
-             Action required:
+            Action required:
             - Remove the secret from the codebase
             - Rotate the exposed credentials immediately
 
@@ -109,7 +109,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 body: `
-                 New secret detected
+                New secret detected
 
                 **Commit:** ${context.sha}
                 **Triggered by:** @${context.actor}
@@ -117,6 +117,6 @@ jobs:
               });
             }
 
-     - name: Fail workflow if secrets detected
+      - name: Fail workflow if secrets detected
         if: steps.gitleaks.outcome == 'failure'
         run: exit 1
