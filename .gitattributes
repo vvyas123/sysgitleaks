@@ -1,0 +1,9 @@
+# Exclude test data and rule examples from GitHub secret scanning
+test_data/** linguist-generated=true
+testdata/** linguist-generated=true
+cmd/generate/config/rules/** linguist-generated=true
+*.json linguist-generated=true filter=lfs diff=lfs merge=lfs -text
+
+# These files contain example/test secrets only
+test_data/** -diff
+testdata/** -diff
